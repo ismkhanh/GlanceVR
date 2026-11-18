@@ -11,7 +11,9 @@ Pinch to click. No controller, no mouse, no trackpad.
 
 Gaze uses your eyes on headsets with eye tracking (Quest Pro). On Quest 3 and 3S it uses where your head points.
 
-▶ [Demo video](https://www.youtube.com/watch?v=RoXALA7M2vg) · [Devpost](https://devpost.com/software/glance-vr) · Meta VR Start Developer Competition 2026
+**▶ [Demo video, with voice-over](https://drive.google.com/file/d/1191OzuXehWlh-NBVggnMJ2hClgezLVX5/view?usp=sharing)** · [First demo (YouTube Short)](https://www.youtube.com/watch?v=RoXALA7M2vg) · [Devpost](https://devpost.com/software/glance-vr) · Meta VR Start Developer Competition 2026
+
+**⬇ [Download Glance VR 1.1](https://drive.google.com/file/d/1KMEfrkouewF5pCpsz-SzJb7hdMNLOSG3/view?usp=sharing)**: the Mac app and the Quest APK in one zip, with a `README.txt` that walks you through it. No build tools needed.
 
 ## Project layout
 
@@ -73,6 +75,10 @@ GlanceVR/
 
 ## Setup and run
 
+**Quickest way:** download [GlanceVR-1.1.zip](https://drive.google.com/file/d/1KMEfrkouewF5pCpsz-SzJb7hdMNLOSG3/view?usp=sharing), unzip it, and follow `README.txt` inside. You double-click two files.
+
+**From source:**
+
 **You need:**
 - a Mac with macOS 14 or newer and Xcode 16+
 - a Meta Quest 3, 3S or Pro with developer mode on
@@ -91,7 +97,7 @@ swift run -c release GlanceVR
 cd quest
 APK=path/to/GlanceVR.apk zsh cable.sh install
 ```
-- Get the APK from [Releases](https://github.com/ismkhanh/GlanceVR/releases).
+- Get the APK from [GlanceVR-1.1.zip](https://drive.google.com/file/d/1KMEfrkouewF5pCpsz-SzJb7hdMNLOSG3/view?usp=sharing) (`Quest/GlanceVR.apk`).
 - Or build it yourself: `zsh build.sh` (needs Godot 4.7.2, the Android SDK and JDK 17).
 
 **3. Put the headset on.** `cable.sh` opens Glance VR for you, and your windows appear around you.
