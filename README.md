@@ -84,12 +84,14 @@ APK=path/to/GlanceVR.apk zsh cable.sh install
 - Get the APK from [Releases](https://github.com/ismkhanh/GlanceVR/releases).
 - Or build it yourself: `zsh build.sh` (needs Godot 4.7.2, the Android SDK and JDK 17).
 
-**3. Open it:** in the headset, open **Library → Unknown sources → Glance VR**. Your windows appear around you.
+**3. Put the headset on.** `cable.sh` opens Glance VR for you, and your windows appear around you.
+- To open it again later, run `zsh cable.sh`.
+- Or in the headset: **App Library → filter (top right) → Unknown Sources → Glance VR**.
 
 **If something goes wrong:**
 - **Black panels:** allow Screen Recording.
 - **Clicks do nothing:** allow Accessibility.
-- **Stuck on "Looking for Glance":** run `zsh quest/cable.sh` again.
+- **Stuck on "Looking for Glance":** check the Mac app is running, then run `zsh quest/cable.sh` again.
 
 > **Security:** on shared Wi-Fi, start the Mac app with `GLANCE_QUEST_LAN=0`. It then accepts the USB cable only.
 

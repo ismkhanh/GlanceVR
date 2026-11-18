@@ -1,7 +1,7 @@
 #!/bin/zsh
 # With the Quest plugged into the Mac (developer mode on):
 #   zsh cable.sh install     install builds/GlanceVR.apk (or APK=/path/to/GlanceVR.apk) and link it to the Mac
-#   zsh cable.sh             just link it again over USB (after re-plugging the cable)
+#   zsh cable.sh             link it again over USB and open it (after re-plugging the cable)
 set -e
 cd "${0:A:h}"
 ADB=adb
@@ -13,4 +13,7 @@ if [[ "$1" == "install" ]]; then
   "$ADB" install -r "$APK"
 fi
 "$ADB" reverse tcp:47811 tcp:47811
-echo "Linked over USB. Start the Mac app (cd mac && swift run -c release GlanceVR), then open Glance VR on the Quest."
+# Open the app on the headset, so nobody has to find it under Library → Unknown Sources.
+"$ADB" shell monkey -p com.seniormobiledev.glancevr -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 \
+  && echo "Linked over USB and opened Glance VR on the Quest. Put the headset on." \
+  || echo "Linked over USB. Glance VR is not installed yet: run zsh cable.sh install"
