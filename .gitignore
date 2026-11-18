@@ -1,5 +1,8 @@
 .DS_Store
 
+# Shareable zip made by package.sh
+dist/
+
 # Mac app build output
 mac/.build/
 mac/.swiftpm/
