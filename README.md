@@ -1,7 +1,15 @@
 # Glance VR
 
 Use your Mac's windows on Meta Quest. Each window floats as its own panel in passthrough.
-**Look** at a panel to select it, and use **hand gestures** to click, scroll, move and zoom.
+
+**Your gaze is the mouse pointer.** Look at a spot in any window, and the Mac's real pointer moves there.
+Pinch to click. No controller, no mouse, no trackpad.
+
+```
+ you look at a button  ──▶  a dot shows where you look  ──▶  the Mac pointer moves there  ──▶  pinch = click
+```
+
+Gaze uses your eyes on headsets with eye tracking (Quest Pro). On Quest 3 and 3S it uses where your head points.
 
 ▶ [Demo video](https://www.youtube.com/watch?v=RoXALA7M2vg) · [Devpost](https://devpost.com/software/glance-vr) · Meta VR Start Developer Competition 2026
 
@@ -22,18 +30,18 @@ GlanceVR/
  │ WindowRegistry          │ ─────────────────────▶ │ one floating panel per   │
  │ WindowStreamPool        │                        │ window                   │
  │                         │                        │                          │
- │ GazeInput               │ ◀───────────────────── │ gaze picks the panel,    │
- │ raises the window and   │  {"type":"click",      │ hand gesture picks the   │
- │ posts a real click      │   "window":42,         │ action                   │
- │                         │   "x":0.4,"y":0.7}     │                          │
+ │ GazeInput               │ ◀───────────────────── │ gaze = where to point    │
+ │ moves the real pointer, │  gaze: 30 times a sec  │ hand = what to do        │
+ │ then clicks / scrolls   │  click, scroll, drag   │                          │
+ │                         │  (window ID + x, y)    │                          │
  └─────────────────────────┘                        └──────────────────────────┘
               WebSocket on port 47811 (USB cable, or the same Wi-Fi)
 ```
 
 1. **Mac → Quest:** the Mac sends the list of open windows and a picture of each one. The window you look at streams live, about 8 frames a second. The others refresh as stills.
-2. **Quest:** shows each window as a panel. Your gaze selects one: eyes on Quest Pro, head on Quest 3. Your hands choose the action.
-3. **Quest → Mac:** a short JSON message, e.g. `{"type":"click","window":42,"x":0.4,"y":0.7}`. Each message has the window ID and the point inside it, from 0 to 1.
-4. **Mac:** brings window 42 to the front, turns the point into screen pixels, and posts a real mouse event.
+2. **Quest:** shows each window as a panel, and finds the panel and the spot you look at.
+3. **Quest → Mac, gaze:** about 30 times a second, the Quest sends where you look, e.g. `{"type":"gaze","window":42,"x":0.4,"y":0.7}`. That is the window ID and the point inside it, from 0 to 1. The Mac moves its real pointer to that spot. It smooths the movement so the pointer doesn't shake.
+4. **Quest → Mac, gesture:** a pinch sends `{"type":"click","window":42,"x":0.4,"y":0.7}`. The Mac brings window 42 to the front and clicks at that spot.
 
 ### Main files
 
@@ -42,7 +50,7 @@ GlanceVR/
 | `QuestHub.swift` | WebSocket server (port 47811) and Wi-Fi discovery (UDP 47812) |
 | `WindowRegistry.swift` | Keeps the list of open windows, up to 8 |
 | `WindowStreamPool.swift` | Captures windows with ScreenCaptureKit |
-| `GazeInput.swift` | Turns messages into real clicks, double-clicks, scrolls and drags |
+| `GazeInput.swift` | Moves the real pointer to where you look, and posts clicks, double-clicks, scrolls and drags |
 
 | Quest (`quest/`) | Job |
 |---|---|
@@ -53,7 +61,7 @@ GlanceVR/
 
 | Gesture | Action |
 |---|---|
-| Look at a panel | Select it |
+| Look at a spot | The Mac pointer moves there, and the panel is selected |
 | Left pinch | Click |
 | Left pinch twice | Open (double-click) |
 | Point (index finger out) + move up/down | Scroll; flick to fling |
