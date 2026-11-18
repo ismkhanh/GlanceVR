@@ -1,0 +1,14 @@
+.DS_Store
+
+# Mac app build output
+mac/.build/
+mac/.swiftpm/
+
+# Quest app: build output, Godot caches, and your release key (never commit it)
+quest/builds/
+quest/.godot/
+quest/android/
+quest/signing/
+*.keystore
+keystore.env
+.env
