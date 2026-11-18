@@ -64,7 +64,9 @@ GlanceVR/
 | Look at a spot | The Mac pointer moves there, and the panel is selected |
 | Left pinch | Click |
 | Left pinch twice | Open (double-click) |
-| Point (index finger out) + move up/down | Scroll; flick to fling |
+| Point (index finger out) + swipe up or down | Scroll, like a phone. Moving back doesn't scroll, so you can swipe again and again. Flick to fling. The hand turns green while it scrolls |
+| Open your hand, then point again | Change the scroll direction |
+| Left pinch, hold, move up/down | Scroll both ways, like dragging the page. Let go to stop |
 | Right pinch + move hand | Move the panel |
 | Both hands pinch, spread / close | Zoom in / out |
 | Right pinch on empty space, hold 2 s | Recenter the panels |

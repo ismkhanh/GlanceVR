@@ -1148,7 +1148,8 @@ func _update_hand_dots() -> void:
 		var joints := XRServer.get_tracker(path) as XRHandTracker
 		var seen := joints != null and joints.has_tracking_data
 		var material: StandardMaterial3D = hand_dot_materials[path]
-		material.albedo_color = HAND_DOT_TALK if (path == LEFT_HAND and talking) else HAND_DOT_COLOR
+		var on_page: bool = point_active and point_touching and path == point_path
+		material.albedo_color = HAND_DOT_TALK if ((path == LEFT_HAND and talking) or on_page) else HAND_DOT_COLOR
 		var dots: Array = hand_dots[path]
 		for joint in dots.size():
 			var dot_node: MeshInstance3D = dots[joint]
@@ -1248,29 +1249,42 @@ func _update_left_scroll() -> void:
 
 # --- Gesture legend ----------------------------------------------------------------------------------------------------
 # In window mode the help is this small legend, shown for 12 s, then hidden so nothing covers your windows.
-const LEGEND := "LOOK = select      L tap = click      L tap x2 = open      POINT (index out) + up/down = scroll, flick = fling\nR hold + move = move window      L + R pinch, spread / close = zoom in / out      R hold 2 s on empty space = recenter"
+const LEGEND := "LOOK = select      L tap = click      L tap x2 = open      POINT + swipe = scroll (open hand to switch direction)\nR hold + move = move window      L + R pinch, spread / close = zoom in / out      R hold 2 s on empty space = recenter"
 const LEGEND_PIXEL := 0.00032
 const LEGEND_MS := 12000
 var legend_shown_at := -1
 
 
 # --- Point to scroll, flick to fling ----------------------------------------------------------------------------------
-# Make a fist with only the index finger out (either hand) while you look at a window: move the finger up to scroll
-# down, down to scroll up, like pushing the page. Stop pointing in the middle of a fast move and the page keeps
-# going and slows down (a fling).
+# Make a fist with only the index finger out (either hand) while you look at a window, then swipe up or down, like on
+# a phone. The first swipe sets the direction. Moving back the other way is the return, as if the finger were lifted
+# off the glass: it never scrolls, so you can swipe again and again. A fast swipe keeps the page going (a fling).
+# To scroll the other way, stop pointing for a moment (open your hand) and point again. The pointing hand's dots turn
+# green while the finger is "on the page".
 const POINT_INDEX_OUT := 0.075       # index tip at least this far from the palm (m): straight
 const POINT_FINGER_IN := 0.065       # middle, ring and little tips nearer than this: curled
+const POINT_SETTLE_MS := 150         # ignore movement this long after the pose starts (the hand is still being raised)
+const POINT_START_PX := 45.0         # first swipe: 1.5 cm one way sets the direction
+const POINT_LIFT_PX := 30.0          # 1 cm back from the farthest point = finger lifted (return, no scroll)
+const POINT_TOUCH_PX := 30.0         # 1 cm forward again after a return = finger back on the page
 const FLING_DECAY := 0.93            # speed kept per frame (at 72 Hz) while a fling coasts
-const FLING_MIN_SPEED := 150.0       # px/s: slower than this, a released point just stops
+const FLING_MIN_SPEED := 150.0       # px/s: slower than this, a lifted finger just stops
+const FLING_PAUSE_MS := 200          # a swipe that stopped longer than this before the lift doesn't fling
 var point_active := false
+var point_path := ""                 # tracker path of the pointing hand
+var point_started_at := 0
 var point_panel := -1
 var point_uv := Vector2.ZERO
-var point_last_y := 0.0
+var point_ref_y := 0.0               # where the finger settled when the point started
+var point_dir := 0                   # +1 / -1: the swipe direction, set by the first swipe. 0 = not set yet
+var point_touching := false          # true: finger "on the page", moves scroll. false: returning, moves are ignored
+var point_peak := 0.0                # farthest position reached along the swipe direction (px) while touching
+var point_peak_at := 0
+var point_valley := 0.0              # farthest position back (px) while returning
 var point_accum := 0.0
-var point_speed := 0.0               # px/s, smoothed, carried into the fling
+var point_speed := 0.0               # px/s, smoothed over forward moves, carried into the fling
 var fling_panel := -1
 var fling_uv := Vector2.ZERO
-
 
 ## World position of the index tip while that hand makes the point pose (index out, other fingers curled), else null.
 func _point_tip(path: String) -> Variant:
@@ -1289,39 +1303,89 @@ func _point_tip(path: String) -> Variant:
 
 
 func _update_point_scroll(delta: float) -> void:
+	var path: String = LEFT_HAND
 	var tip: Variant = _point_tip(LEFT_HAND)
 	if tip == null:
+		path = RIGHT_HAND
 		tip = _point_tip(RIGHT_HAND)
 	if tip == null or resizing_panel:
 		if point_active:
 			point_active = false
-			if absf(point_speed) > FLING_MIN_SPEED:
-				fling_panel = point_panel
-				fling_uv = point_uv
-			else:
-				point_speed = 0.0
+			if point_touching:
+				_start_fling()
+			point_touching = false
 		_update_fling(delta)
 		return
 	var y: float = (tip as Vector3).y
 	if not point_active:
 		var hit: Variant = _current_panel_hit()
 		if hit == null or not _using_panels():
+			_update_fling(delta)
 			return
 		print("Glance VR: point scroll on window %d" % hit[0])
 		point_active = true
+		point_path = path
+		point_started_at = Time.get_ticks_msec()
 		point_panel = hit[0]
 		point_uv = hit[1]
-		point_last_y = y
+		point_ref_y = y
+		point_dir = 0
+		point_touching = false
 		point_accum = 0.0
 		point_speed = 0.0
 		fling_panel = -1
 		return
-	var moved := (y - point_last_y) * SCROLL_PIXELS_PER_M
-	point_last_y = y
-	if delta > 0.0:
-		point_speed = lerpf(point_speed, moved / delta, 0.3)
-	point_accum += moved
-	_flush_scroll(point_panel, point_uv)
+	var now := Time.get_ticks_msec()
+	if now - point_started_at < POINT_SETTLE_MS:
+		point_ref_y = y      # the hand is still being raised: measure from where it settles
+		return
+	if point_dir == 0:
+		# First swipe: whichever way the finger goes 1.5 cm first. Those 1.5 cm scroll too, so it doesn't feel late.
+		var travel := (y - point_ref_y) * SCROLL_PIXELS_PER_M
+		if absf(travel) >= POINT_START_PX:
+			point_dir = 1 if travel > 0.0 else -1
+			point_touching = true
+			point_peak = travel * point_dir
+			point_peak_at = now
+			point_accum += travel
+			_flush_scroll(point_panel, point_uv)
+		return
+	# Finger position along the swipe direction, in px from where the point started.
+	var pos := (y - point_ref_y) * SCROLL_PIXELS_PER_M * point_dir
+	if point_touching:
+		if pos > point_peak:
+			# Scroll only past the farthest point reached, so hand shake never adds up to a scroll.
+			var advance := pos - point_peak
+			point_peak = pos
+			point_peak_at = now
+			point_accum += advance * point_dir
+			if delta > 0.0:
+				point_speed = lerpf(point_speed, advance * point_dir / delta, 0.3)
+			_flush_scroll(point_panel, point_uv)
+		elif point_peak - pos >= POINT_LIFT_PX:
+			point_touching = false     # 1 cm back: the finger is lifted for the return
+			point_valley = pos
+			_start_fling()
+		return
+	# Returning (finger lifted): a running fling coasts on. 1 cm forward again puts the finger back on the page,
+	# and it catches the fling, like touching a moving list on a phone.
+	_update_fling(delta)
+	point_valley = minf(point_valley, pos)
+	if pos - point_valley >= POINT_TOUCH_PX:
+		point_touching = true
+		point_peak = pos
+		point_peak_at = now
+		point_speed = 0.0
+		fling_panel = -1
+
+
+## The finger left the page: keep the page moving if the swipe was fast enough.
+func _start_fling() -> void:
+	if absf(point_speed) > FLING_MIN_SPEED and Time.get_ticks_msec() - point_peak_at <= FLING_PAUSE_MS:
+		fling_panel = point_panel
+		fling_uv = point_uv
+	else:
+		point_speed = 0.0
 
 
 func _update_fling(delta: float) -> void:

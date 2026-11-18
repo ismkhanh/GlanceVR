@@ -104,7 +104,10 @@ GESTURES
   Look at a spot                     the Mac pointer moves there
   Left pinch                         click
   Left pinch twice                   open (double-click)
-  Point (index finger out), up/down  scroll; flick to fling
+  Point (index finger out) + swipe   scroll, like a phone. Moving back doesn't scroll,
+                                     so swipe again and again. Flick to fling.
+  Open your hand, then point again   change the scroll direction
+  Left pinch, hold, move up/down     scroll both ways; let go to stop
   Right pinch + move your hand       move the panel
   Both hands pinch, spread / close   zoom in / out
   Right palm toward you + pinch      Quest menu > Quit, to close the app
