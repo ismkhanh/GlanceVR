@@ -98,6 +98,11 @@ APK=path/to/GlanceVR.apk zsh cable.sh install
 - To open it again later, run `zsh cable.sh`.
 - Or in the headset: **App Library → filter (top right) → Unknown Sources → Glance VR**.
 
+**Make a zip to share** (builds both apps, plus a README for the person you send it to):
+```
+zsh package.sh 1.1      # → dist/GlanceVR-1.1.zip
+```
+
 **If something goes wrong:**
 - **Black panels:** allow Screen Recording.
 - **Clicks do nothing:** allow Accessibility.

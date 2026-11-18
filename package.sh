@@ -1,13 +1,22 @@
 #!/bin/zsh
-# Makes dist/GlanceVR-<version>.zip to share: the Mac app (ready to run), the Quest APK and a short README.
-#   APK=/path/to/GlanceVR.apk zsh package.sh [version]
+# Builds both apps and makes dist/GlanceVR-<version>.zip to share: the Mac app, the Quest APK and a short README.
+#   zsh package.sh          keeps the version name, raises the version code by 1
+#   zsh package.sh 1.1      sets the version name to 1.1
+# Needs Xcode, plus what quest/build.sh needs: Godot 4.7, the Android SDK and JDK 17.
+# Put your release key in quest/signing/ (never committed) so the APK is release-signed.
 set -e
 cd "${0:A:h}"
-VERSION="${1:-1.0}"
-APK="${APK:-quest/builds/GlanceVR.apk}"
-[[ -f "$APK" ]] || { echo "No APK at $APK. Build it (cd quest && zsh build.sh) or run: APK=/path/to/GlanceVR.apk zsh package.sh"; exit 1; }
+PRESETS=quest/export_presets.cfg
+VERSION="${1:-$(sed -n 's/^version\/name="\(.*\)"/\1/p' $PRESETS)}"
+CODE=$(( $(sed -n 's/^version\/code=//p' $PRESETS) + 1 ))
 
-echo "Building the Mac app for Apple silicon and Intel…"
+echo "== Quest app: version $VERSION, version code $CODE =="
+perl -pi -e "s/^version\/name=\".*\"/version\/name=\"$VERSION\"/" $PRESETS
+zsh quest/build.sh $CODE
+APK=quest/builds/GlanceVR.apk
+[[ -f "$APK" ]] || { echo "The Quest build made no APK."; exit 1; }
+
+echo "== Mac app: Apple silicon and Intel =="
 if (cd mac && swift build -c release --arch arm64 --arch x86_64); then
   BIN="mac/.build/apple/Products/Release/GlanceVR"
 else
@@ -131,4 +140,5 @@ TXT
 
 (cd dist && ditto -c -k --keepParent "GlanceVR-$VERSION" "GlanceVR-$VERSION.zip")
 echo "Mac app: $(lipo -archs "$OUT/Mac/GlanceVR")"
+echo "Quest app: version $VERSION, version code $CODE"
 echo "Done: $PWD/dist/GlanceVR-$VERSION.zip ($(du -h "dist/GlanceVR-$VERSION.zip" | cut -f1))"
